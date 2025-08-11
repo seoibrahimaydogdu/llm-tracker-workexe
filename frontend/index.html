@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Visibility Analytics - Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --info-color: #3b82f6;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid var(--border-color);
+            padding: 24px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 24px;
+        }
+
+        .logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 4px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: #f3f4f6;
+            color: var(--primary-color);
+        }
+
+        .nav-link.active {
+            border-right: 3px solid var(--primary-color);
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+        }
+
+        .stat-icon.primary { background: var(--primary-color); }
+        .stat-icon.success { background: var(--success-color); }
+        .stat-icon.warning { background: var(--warning-color); }
+        .stat-icon.info { background: var(--info-color); }
+
+        .stat-content h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-content p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .stat-change {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .stat-change.positive { color: var(--success-color); }
+        .stat-change.negative { color: var(--danger-color); }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        /* Visibility Chart */
+        .chart-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-badge {
+            background: #dbeafe;
+            color: var(--info-color);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .visibility-score {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .visibility-score h2 {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+        }
+
+        .visibility-score p {
+            color: var(--text-secondary);
+        }
+
+        /* Rankings Table */
+        .ranking-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .ranking-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ranking-table th {
+            text-align: left;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .ranking-table td {
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .brand-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .score-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .score-badge.excellent { background: #dcfce7; color: var(--success-color); }
+        .score-badge.good { background: #fef3c7; color: var(--warning-color); }
+        .score-badge.average { background: #fee2e2; color: var(--danger-color); }
+
+        /* Analysis Tools */
+        .tools-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .tool-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .tool-header {
+            margin-bottom: 20px;
+        }
+
+        .tool-header h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .tool-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-control.textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tag {
+            background: var(--primary-color);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tag .remove {
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .tag .remove:hover {
+            opacity: 1;
+        }
+
+        /* Results */
+        .results-section {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .result-card {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .result-status {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .result-status.mentioned {
+            background: #dcfce7;
+            color: var(--success-color);
+        }
+
+        .result-status.not-mentioned {
+            background: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .result-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .detail-value {
+            font-weight: 500;
+        }
+
+        .ai-analysis {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .ai-analysis h4 {
+            color: var(--primary-color);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-analysis pre {
+            white-space: pre-wrap;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 0;
+            border: none;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-50px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 24px 0;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        .modal-body {
+            padding: 0 24px 24px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        /* Form Styles */
+        .test-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input, .form-textarea {
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .form-textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: -4px;
+        }
+
+        .test-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .radio-option:hover {
+            border-color: var(--primary-color);
+            background: #f8fafc;
+        }
+
+        .radio-option input[type="radio"] {
+            display: none;
+        }
+
+        .radio-custom {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 50%;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .radio-option input[type="radio"]:checked + .radio-custom {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+        }
+
+        .radio-option input[type="radio"]:checked + .radio-custom::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* Loading Styles */
+        .test-loading {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .loading-content {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 24px 0 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Results Styles */
+        .test-results {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .results-header h4 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        /* Test Results Additional Styles */
+        .result-stats {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .test-details {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .test-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            background: #f8fafc;
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .test-number {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .test-status {
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .test-status.success {
+            background: #dcfce7;
+            color: var(--success-color);
+        }
+
+        .test-status.danger {
+            background: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .test-prompt {
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .test-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tools-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10px auto;
+            }
+            
+            .modal-body {
+                max-height: 80vh;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="logo">
+                <h1><i class="fas fa-chart-line"></i> AI Analytics</h1>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="#" class="nav-link active" data-tab="dashboard">
+                        <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-tab="website-analysis">
+                        <div class="nav-icon"><i class="fas fa-globe"></i></div>
+                        Website Analizi
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-tab="prompt-analysis">
+                        <div class="nav-icon"><i class="fas fa-comment-dots"></i></div>
+                        Prompt Analizi
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-tab="insights">
+                        <div class="nav-icon"><i class="fas fa-lightbulb"></i></div>
+                        Insights
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" data-tab="sources">
+                        <div class="nav-icon"><i class="fas fa-link"></i></div>
+                        Sources
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="header">
+                    <h1>Dashboard</h1>
+                    <div class="header-actions">
+                        <button class="btn" onclick="runRealVisibilityTest()">
+                            <i class="fas fa-rocket"></i> Real AI Test
+                        </button>
+                        <button class="btn" onclick="runQuickTest()">
+                            <i class="fas fa-zap"></i> Quick Test
+                        </button>
+                        <button class="btn"><i class="fas fa-download"></i> Export</button>
+                        <button class="btn btn-primary"><i class="fas fa-plus"></i> New Analysis</button>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="visibility-score">17%</h3>
+                            <p>AI Visibility Score</p>
+                        </div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +2.3%
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="total-mentions">127</h3>
+                            <p>Total Mentions</p>
+                        </div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +12.5%
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon warning">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="avg-position">3.2</h3>
+                            <p>Avg. Position</p>
+                        </div>
+                        <div class="stat-change negative">
+                            <i class="fas fa-arrow-down"></i> -0.8
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon info">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="ai-models">8</h3>
+                            <p>AI Models Tracked</p>
+                        </div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i> +2
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="main-grid">
+                    <!-- Visibility Chart -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3 class="chart-title">AI Visibility Trend</h3>
+                            <span class="chart-badge">New</span>
+                        </div>
+                        
+                        <div class="visibility-score">
+                            <h2>17%</h2>
+                            <p>Current Visibility Score</p>
+                        </div>
+                        
+                        <canvas id="visibilityChart" width="400" height="200"></canvas>
+                    </div>
+
+                    <!-- Industry Ranking -->
+                    <div class="ranking-card">
+                        <div class="ranking-header">
+                            <h3 class="chart-title">Industry Ranking</h3>
+                            <span class="chart-badge">Last 7 days</span>
+                        </div>
+
+                        <table class="ranking-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Brand</th>
+                                    <th>Position</th>
+                                    <th>Visibility</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>
+                                        <div class="brand-info">
+                                            <div class="brand-icon" style="background: #6366f1;">I</div>
+                                            intercom.com
+                                        </div>
+                                    </td>
+                                    <td>4.2</td>
+                                    <td>93.4%</td>
+                                    <td><span class="score-badge excellent">71</span></td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>
+                                        <div class="brand-info">
+                                            <div class="brand-icon" style="background: #10b981;">Z</div>
+                                            zendesk.com
+                                        </div>
+                                    </td>
+                                    <td>3.6</td>
+                                    <td>86.4%</td>
+                                    <td><span class="score-badge excellent">75</span></td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>
+                                        <div class="brand-info">
+                                            <div class="brand-icon" style="background: #f59e0b;">H</div>
+                                            hubspot.com
+                                        </div>
+                                    </td>
+                                    <td>5.8</td>
+                                    <td>82.3%</td>
+                                    <td><span class="score-badge good">73</span></td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>
+                                        <div class="brand-info">
+                                            <div class="brand-icon" style="background: #3b82f6;">S</div>
+                                            salesforce.com
+                                        </div>
+                                    </td>
+                                    <td>7.2</td>
+                                    <td>73.7%</td>
+                                    <td><span class="score-badge good">72</span></td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>
+                                        <div class="brand-info">
+                                            <div class="brand-icon" style="background: #22c55e;">W</div>
+                                            workexe.co
+                                        </div>
+                                    </td>
+                                    <td>3.1</td>
+                                    <td>22.0%</td>
+                                    <td><span class="score-badge average">74</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Website Analysis Tab -->
+            <div id="website-analysis-tab" class="tab-content">
+                <div class="header">
+                    <h1>Website Analizi</h1>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <h3><i class="fas fa-globe"></i> Website İçerik Analizi</h3>
+                        <p>Bir website'nin içeriğinde belirli marka ve AI modellerinin bahsedilip bahsedilmediğini analiz edin.</p>
+                    </div>
+
+                    <form id="website-form">
+                        <div class="form-group">
+                            <label for="website-url"><i class="fas fa-link"></i> Website URL</label>
+                            <input type="url" id="website-url" class="form-control" placeholder="https://example.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="brands"><i class="fas fa-tags"></i> Aranacak Markalar</label>
+                            <input type="text" id="brands" class="form-control" placeholder="Workexe, Patent, SEO (virgülle ayırın)">
+                            <div id="brands-tags" class="tag-container"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="models"><i class="fas fa-robot"></i> Aranacak AI Modelleri</label>
+                            <input type="text" id="models" class="form-control" placeholder="ChatGPT, Gemini, Claude (virgülle ayırın)">
+                            <div id="models-tags" class="tag-container"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Website'yi Analiz Et
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Prompt Analysis Tab -->
+            <div id="prompt-analysis-tab" class="tab-content">
+                <div class="header">
+                    <h1>Prompt Analizi</h1>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <h3><i class="fas fa-comment-dots"></i> Prompt Analizi</h3>
+                        <p>Kullanıcı promptunda belirli website'lerin bahsedilip bahsedilmediğini tespit edin.</p>
+                    </div>
+
+                    <form id="prompt-form">
+                        <div class="form-group">
+                            <label for="user-prompt"><i class="fas fa-edit"></i> Kullanıcı Promptu</label>
+                            <textarea id="user-prompt" class="form-control textarea" placeholder="Patent başvuru süreçleri nasıl işliyor? Workexe vs Ahrefs hangisi daha iyi?" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="websites"><i class="fas fa-globe"></i> Test Edilecek Website'ler</label>
+                            <input type="text" id="websites" class="form-control" placeholder="elmaspatent.com, workexe.co, ahrefs.com (virgülle ayırın)">
+                            <div id="websites-tags" class="tag-container"></div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-brain"></i> Promptu Analiz Et
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Insights Tab -->
+            <div id="insights-tab" class="tab-content">
+                <div class="header">
+                    <h1>Insights</h1>
+                </div>
+                <div class="tool-card">
+                    <h3>AI Model Performance</h3>
+                    <p>Yakında eklenecek...</p>
+                </div>
+            </div>
+
+            <!-- Sources Tab -->
+            <div id="sources-tab" class="tab-content">
+                <div class="header">
+                    <h1>Sources</h1>
+                </div>
+                <div class="tool-card">
+                    <h3>URL Management</h3>
+                    <p>Yakında eklenecek...</p>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Analiz yapılıyor...</p>
+            </div>
+
+            <!-- Results -->
+            <div id="results" class="results-section">
+                <div class="results-header">
+                    <h2 id="results-title">Analiz Sonuçları</h2>
+                </div>
+                <div id="results-content"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Real AI Test Modal -->
+    <div id="aiTestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-rocket"></i> Real AI Visibility Test</h3>
+                <span class="modal-close" onclick="closeAITestModal()">&times;</span>
+            </div>
+            
+            <div class="modal-body">
+                <div id="testForm" class="test-form">
+                    <div class="form-group">
+                        <label for="websiteInput">🌐 Website URL:</label>
+                        <input type="text" id="websiteInput" placeholder="örn: workexe.co" class="form-input">
+                        <small class="form-hint">Test edilecek website'in URL'ini girin (http/https olmadan)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>🤖 Test Tipi:</label>
+                        <div class="test-options">
+                            <label class="radio-option">
+                                <input type="radio" name="testType" value="auto" checked>
+                                <span class="radio-custom"></span>
+                                Otomatik Test (10 farklı prompt)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="testType" value="custom">
+                                <span class="radio-custom"></span>
+                                Özel Prompt
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="customPromptSection" class="form-group" style="display: none;">
+                        <label for="customPrompt">💭 Özel Prompt:</label>
+                        <textarea id="customPrompt" placeholder="Test etmek istediğiniz soruyu girin..." class="form-textarea"></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" onclick="closeAITestModal()">İptal</button>
+                        <button class="btn btn-primary" onclick="startRealAITest()" id="startTestBtn">
+                            <i class="fas fa-play"></i> Testi Başlat
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Loading Screen -->
+                <div id="testLoading" class="test-loading" style="display: none;">
+                    <div class="loading-content">
+                        <div class="loading-spinner"></div>
+                        <h4 id="loadingTitle">🚀 Gemini AI Test Başlatılıyor...</h4>
+                        <p id="loadingMessage">Lütfen bekleyin, bu işlem birkaç dakika sürebilir.</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0%</div>
+                    </div>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="testResults" class="test-results" style="display: none;">
+                    <div class="results-header">
+                        <h4><i class="fas fa-chart-line"></i> Test Sonuçları</h4>
+                        <button class="btn btn-sm" onclick="downloadResults()">
+                            <i class="fas fa-download"></i> İndir
+                        </button>
+                    </div>
+                    <div id="resultsContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentTab = 'dashboard';
+        const API_BASE = 'http://localhost:8000';
+
+        // Tab switching
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Update active nav link
+                    navLinks.forEach(nl => nl.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Update active tab content
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    document.getElementById(tabId + '-tab').classList.add('active');
+                    
+                    currentTab = tabId;
+                    hideResults();
+                    
+                    // Load dashboard data if dashboard tab
+                    if (tabId === 'dashboard') {
+                        loadDashboardData();
+                    }
+                });
+            });
+
+            // Initialize dashboard
+            loadDashboardData();
+            initializeCharts();
+            setupTagInputs();
+            setupForms();
+        });
+
+        // Dashboard data loading
+        async function loadDashboardData() {
+            try {
+                const response = await fetch(`${API_BASE}/get-dashboard-stats`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateDashboardStats(data.data);
+                }
+            } catch (error) {
+                console.error('Dashboard data loading error:', error);
+            }
+        }
+
+        function updateDashboardStats(stats) {
+            document.getElementById('visibility-score').textContent = stats.visibility_score + '%';
+            document.getElementById('total-mentions').textContent = stats.total_mentions;
+            document.getElementById('avg-position').textContent = stats.avg_score;
+            document.getElementById('ai-models').textContent = stats.total_analysis;
+        }
+
+        // Chart initialization
+        function initializeCharts() {
+            const ctx = document.getElementById('visibilityChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jul 15', 'Jul 16', 'Jul 17', 'Jul 18', 'Jul 19', 'Jul 20', 'Jul 21'],
+                    datasets: [{
+                        label: 'Visibility %',
+                        data: [15, 12, 14, 16, 18, 17, 17],
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            display: true,
+                            beginAtZero: true,
+                            max: 25
+                        }
+                    }
+                }
+            });
+        }
+
+        // Tag input functionality
+        function setupTagInputs() {
+            setupTagInput('brands', 'brands-tags');
+            setupTagInput('models', 'models-tags');
+            setupTagInput('websites', 'websites-tags');
+        }
+
+        function setupTagInput(inputId, tagsId) {
+            const input = document.getElementById(inputId);
+            const tagsContainer = document.getElementById(tagsId);
+            
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addTag(input.value.trim(), tagsContainer);
+                    input.value = '';
+                }
+            });
+
+            input.addEventListener('blur', function() {
+                if (input.value.trim()) {
+                    addTag(input.value.trim(), tagsContainer);
+                    input.value = '';
+                }
+            });
+        }
+
+        function addTag(text, container) {
+            if (!text) return;
+            
+            const tag = document.createElement('div');
+            tag.className = 'tag';
+            tag.innerHTML = `
+                ${text} 
+                <span class="remove" onclick="removeTag(this)">&times;</span>
+            `;
+            container.appendChild(tag);
+        }
+
+        function removeTag(element) {
+            element.parentElement.remove();
+        }
+
+        function getTagValues(containerId) {
+            const container = document.getElementById(containerId);
+            const tags = container.querySelectorAll('.tag');
+            return Array.from(tags).map(tag => tag.textContent.replace('×', '').trim());
+        }
+
+        // Form setup
+        function setupForms() {
+            document.getElementById('website-form').addEventListener('submit', handleWebsiteAnalysis);
+            document.getElementById('prompt-form').addEventListener('submit', handlePromptAnalysis);
+            
+            // Add default values
+            addTag('Workexe', document.getElementById('brands-tags'));
+            addTag('Patent', document.getElementById('brands-tags'));
+            addTag('ChatGPT', document.getElementById('models-tags'));
+            addTag('Gemini', document.getElementById('models-tags'));
+            
+            addTag('elmaspatent.com', document.getElementById('websites-tags'));
+            addTag('workexe.co', document.getElementById('websites-tags'));
+            addTag('ahrefs.com', document.getElementById('websites-tags'));
+            
+            document.getElementById('website-url').value = 'https://workexe.co';
+            document.getElementById('user-prompt').value = 'Patent başvuru süreçleri nasıl işliyor? Workexe vs Ahrefs hangisi daha iyi SEO analizi yapıyor?';
+        }
+
+        // Analysis handlers
+        async function handleWebsiteAnalysis(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('website-url').value.trim();
+            const brands = getTagValues('brands-tags');
+            const models = getTagValues('models-tags');
+
+            if (!url) {
+                showError('Lütfen geçerli bir URL girin!');
+                return;
+            }
+
+            if (brands.length === 0 && models.length === 0) {
+                showError('En az bir marka veya AI modeli ekleyin!');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/test-analysis`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: url,
+                        brands: brands.length > 0 ? brands : ['test'],
+                        models: models.length > 0 ? models : ['test']
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showWebsiteResults(data.data);
+                } else {
+                    showError(`Analiz hatası: ${data.message || 'Bilinmeyen hata'}`);
+                }
+            } catch (error) {
+                showError(`Bağlantı hatası: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handlePromptAnalysis(e) {
+            e.preventDefault();
+            
+            const prompt = document.getElementById('user-prompt').value.trim();
+            const websites = getTagValues('websites-tags');
+
+            if (!prompt) {
+                showError('Lütfen bir prompt girin!');
+                return;
+            }
+
+            if (websites.length === 0) {
+                showError('En az bir website ekleyin!');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`${API_BASE}/analyze-prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        websites: websites
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showPromptResults(data.data);
+                } else {
+                    showError(`Analiz hatası: ${data.message || 'Bilinmeyen hata'}`);
+                }
+            } catch (error) {
+                showError(`Bağlantı hatası: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Results display
+        function showWebsiteResults(data) {
+            const content = document.getElementById('results-content');
+            const title = document.getElementById('results-title');
+            
+            title.innerHTML = '<i class="fas fa-globe"></i> Website Analiz Sonuçları';
+
+            let html = `
+                <div class="result-card">
+                    <div class="result-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Analiz Edilen URL:</span>
+                            <span class="detail-value">${data.url}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Sayfa Başlığı:</span>
+                            <span class="detail-value">${data.title}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">İçerik Uzunluğu:</span>
+                            <span class="detail-value">${data.content_length.toLocaleString()} karakter</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            data.results.forEach(result => {
+                const statusClass = result.mentioned ? 'mentioned' : 'not-mentioned';
+                const statusText = result.mentioned ? 'BAHSEDİLDİ' : 'BAHSEDİLMEDİ';
+
+                html += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <div class="result-title">${result.brand} × ${result.model}</div>
+                            <div class="result-status ${statusClass}">${statusText}</div>
+                        </div>
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Skor:</span>
+                                <span class="detail-value">${result.score}/100</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Brand Contexts:</span>
+                                <span class="detail-value">${result.contexts.brand.length}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Model Contexts:</span>
+                                <span class="detail-value">${result.contexts.model.length}</span>
+                            </div>
+                        </div>
+                        <div class="ai-analysis">
+                            <h4><i class="fas fa-brain"></i> AI Analizi</h4>
+                            <pre>${result.analysis}</pre>
+                        </div>
+                    </div>
+                `;
+            });
+
+            content.innerHTML = html;
+            showResults();
+        }
+
+        function showPromptResults(data) {
+            const content = document.getElementById('results-content');
+            const title = document.getElementById('results-title');
+            
+            title.innerHTML = '<i class="fas fa-comment-dots"></i> Prompt Analiz Sonuçları';
+
+            let html = `
+                <div class="result-card">
+                    <div class="result-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Analiz Edilen Prompt:</span>
+                            <span class="detail-value">"${data.original_prompt}"</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Bahsedilen Website Sayısı:</span>
+                            <span class="detail-value">${data.total_websites_mentioned}/${Object.keys(data.website_analysis).length}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Analiz Skoru:</span>
+                            <span class="detail-value">${data.analysis_score}/150</span>
+                        </div>
+                        ${data.recommended_website ? `
+                        <div class="detail-item">
+                            <span class="detail-label">Önerilen Site:</span>
+                            <span class="detail-value">${data.recommended_website}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+
+            Object.entries(data.website_analysis).forEach(([website, analysis]) => {
+                const statusClass = analysis.mentioned ? 'mentioned' : 'not-mentioned';
+                const statusText = analysis.mentioned ? 'BAHSEDİLDİ' : 'BAHSEDİLMEDİ';
+
+                html += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <div class="result-title">${website}</div>
+                            <div class="result-status ${statusClass}">${statusText}</div>
+                        </div>
+                        ${analysis.mentioned ? `
+                        <div class="result-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Bağlam:</span>
+                                <span class="detail-value">${analysis.context}</span>
+                            </div>
+                            ${analysis.found_company_name ? `
+                            <div class="detail-item">
+                                <span class="detail-label">Bulunan Firma Adı:</span>
+                                <span class="detail-value">"${analysis.found_company_name}"</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="ai-analysis">
+                    <h4><i class="fas fa-brain"></i> Gemini AI Detaylı Analizi</h4>
+                    <pre>${data.ai_analysis}</pre>
+                </div>
+            `;
+
+            content.innerHTML = html;
+            showResults();
+        }
+
+        // Gerçek test butonu ekle
+
+// Gerçek AI Test
+function runRealVisibilityTest() {
+    openAITestModal();
+}
+
+// Hızlı Test
+async function runQuickTest() {
+    const website = prompt("🌐 Website URL'ini girin:");
+    if (!website) return;
+    
+    const prompt = prompt("💭 Test prompt'unu girin:");
+    if (!prompt) return;
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`${API_BASE}/run-quick-ai-test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                website: website,
+                prompt: prompt
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            showRealTestResults(result.data);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        showError('Test hatası: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Real Test Sonuçları Göster
+function showRealTestResults(data) {
+    const content = document.getElementById('results-content');
+    const title = document.getElementById('results-title');
+    
+    title.innerHTML = `<i class="fas fa-robot"></i> Gerçek Gemini AI Test Sonuçları`;
+    
+    const summary = data.summary;
+    
+    let html = `
+        <div class="result-card">
+            <h3>🎯 ${data.website} - Gemini AI Visibility Report</h3>
+            <div class="result-details">
+                <div class="detail-item">
+                    <span class="detail-label">Overall Visibility Score:</span>
+                    <span class="detail-value" style="font-weight: 700; color: ${summary.average_visibility_score >= 70 ? '#22c55e' : summary.average_visibility_score >= 40 ? '#f59e0b' : '#ef4444'}">${summary.average_visibility_score}%</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Mention Rate:</span>
+                    <span class="detail-value">${summary.mention_rate}% (${summary.mentioned_count}/${summary.successful_tests})</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Sentiment Breakdown:</span>
+                    <span class="detail-value">
+                        ✅ ${summary.sentiment_breakdown.positive} Positive, 
+                        ⚠️ ${summary.sentiment_breakdown.neutral} Neutral, 
+                        ❌ ${summary.sentiment_breakdown.negative} Negative
+                    </span>
+                </div>
+            </div>
+            <div class="ai-analysis">
+                <h4><i class="fas fa-lightbulb"></i> AI Recommendation</h4>
+                <p style="font-size: 16px; line-height: 1.6;">${summary.recommendation}</p>
+            </div>
+        </div>
+    `;
+    
+    // Best performing prompt
+    if (summary.best_performing_prompt) {
+        html += `
+            <div class="result-card">
+                <h4>🏆 En İyi Performans Gösteren Prompt</h4>
+                <div class="result-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Prompt:</span>
+                        <span class="detail-value">"${summary.best_performing_prompt.prompt}"</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Visibility Score:</span>
+                        <span class="detail-value">${summary.best_performing_prompt.visibility_score}%</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Ranking:</span>
+                        <span class="detail-value">${summary.best_performing_prompt.ranking}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Sentiment:</span>
+                        <span class="detail-value">${summary.best_performing_prompt.sentiment}</span>
+                    </div>
+                </div>
+                <div class="ai-analysis">
+                    <h4><i class="fas fa-comment"></i> Gemini Response</h4>
+                    <pre style="font-size: 14px; line-height: 1.4;">${summary.best_performing_prompt.response}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Detailed test results
+    html += `
+        <div class="result-card">
+            <h4>📊 Detaylı Test Sonuçları</h4>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">#</th>
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: left;">Prompt</th>
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Score</th>
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Ranking</th>
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Sentiment</th>
+                            <th style="padding: 8px; border: 1px solid #e5e7eb; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+    
+    data.test_results.forEach((result, index) => {
+        if (!result.error) {
+            const statusColor = result.mentioned ? '#22c55e' : '#ef4444';
+            const statusText = result.mentioned ? '✅ Mentioned' : '❌ Not Found';
+            
+            html += `
+                <tr>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6;">${index + 1}</td>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6; max-width: 300px;">${result.prompt}</td>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6; text-align: center; font-weight: 600;">${result.visibility_score}%</td>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6; text-align: center;">${result.ranking}</td>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6; text-align: center;">${result.sentiment}</td>
+                    <td style="padding: 8px; border: 1px solid #f3f4f6; text-align: center; color: ${statusColor};">${statusText}</td>
+                </tr>
+            `;
+        }
+    });
+    
+    html += `
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    showResults();
+}
+
+// Real AI Test Modal Functions
+function openAITestModal() {
+    document.getElementById('aiTestModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Reset form
+    document.getElementById('websiteInput').value = '';
+    document.getElementById('customPrompt').value = '';
+    document.querySelector('input[name="testType"][value="auto"]').checked = true;
+    document.getElementById('customPromptSection').style.display = 'none';
+    
+    // Hide results if visible
+    document.getElementById('testResults').style.display = 'none';
+    document.getElementById('testLoading').style.display = 'none';
+    document.getElementById('testForm').style.display = 'block';
+}
+
+function closeAITestModal() {
+    document.getElementById('aiTestModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Test type change handler
+document.addEventListener('DOMContentLoaded', function() {
+    // Existing DOMContentLoaded code...
+    
+    // Add test type handler
+    const testTypeRadios = document.querySelectorAll('input[name="testType"]');
+    const customPromptSection = document.getElementById('customPromptSection');
+    
+    testTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customPromptSection.style.display = 'block';
+            } else {
+                customPromptSection.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Start Real AI Test
+async function startRealAITest() {
+    const website = document.getElementById('websiteInput').value.trim();
+    const testType = document.querySelector('input[name="testType"]:checked').value;
+    const customPrompt = document.getElementById('customPrompt').value.trim();
+    
+    // Validation
+    if (!website) {
+        alert('❌ Lütfen website URL\'ini girin!');
+        return;
+    }
+    
+    if (testType === 'custom' && !customPrompt) {
+        alert('❌ Lütfen özel prompt\'u girin!');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('testForm').style.display = 'none';
+    document.getElementById('testLoading').style.display = 'block';
+    
+    try {
+        // Update progress
+        updateProgress(0, '🚀 Test başlatılıyor...');
+        
+        const requestData = {
+            website: website,
+            prompts: testType === 'custom' ? [customPrompt] : []
+        };
+        
+        updateProgress(20, '🤖 Gemini AI ile bağlantı kuruluyor...');
+        
+        const response = await fetch(`${API_BASE}/run-real-visibility-test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        });
+        
+        updateProgress(50, '📝 Test prompts\'ları çalıştırılıyor...');
+        
+        const result = await response.json();
+        
+        updateProgress(100, '✅ Test tamamlandı!');
+        
+        if (result.status === 'success') {
+            setTimeout(() => {
+                showAITestResults(result.data);
+            }, 1000);
+        } else {
+            throw new Error(result.message || 'Test hatası');
+        }
+        
+    } catch (error) {
+        console.error('AI Test Error:', error);
+        
+        // Show error
+        document.getElementById('testLoading').innerHTML = `
+            <div class="loading-content">
+                <div style="color: #ef4444; font-size: 48px; margin-bottom: 16px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h4 style="color: #ef4444;">Test Hatası</h4>
+                <p>${error.message}</p>
+                <button class="btn btn-primary" onclick="openAITestModal()">
+                    <i class="fas fa-redo"></i> Tekrar Dene
+                </button>
+            </div>
+        `;
+    }
+}
+
+function updateProgress(percentage, message) {
+    document.getElementById('progressFill').style.width = percentage + '%';
+    document.getElementById('progressText').textContent = percentage + '%';
+    document.getElementById('loadingMessage').textContent = message;
+}
+
+function showAITestResults(data) {
+    document.getElementById('testLoading').style.display = 'none';
+    document.getElementById('testResults').style.display = 'block';
+    
+    const summary = data.summary;
+    
+    let html = `
+        <div class="result-card">
+            <div class="result-header">
+                <h3>🎯 ${data.website} - AI Visibility Raporu</h3>
+                <div class="result-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">${summary.average_visibility_score}%</span>
+                        <span class="stat-label">Visibility Score</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${summary.mention_rate}%</span>
+                        <span class="stat-label">Mention Rate</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${summary.mentioned_count}/${summary.successful_tests}</span>
+                        <span class="stat-label">Bahsedilme</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="result-card">
+            <h4>📊 Test Detayları</h4>
+            <div class="test-details">
+    `;
+    
+    data.test_results.forEach((result, index) => {
+        if (!result.error) {
+            const statusClass = result.mentioned ? 'success' : 'danger';
+            const statusIcon = result.mentioned ? '✅' : '❌';
+            
+            html += `
+                <div class="test-item">
+                    <div class="test-header">
+                        <span class="test-number">#${index + 1}</span>
+                        <span class="test-status ${statusClass}">${statusIcon} ${result.visibility_score}%</span>
+                    </div>
+                    <div class="test-prompt"><strong>Prompt:</strong> ${result.prompt}</div>
+                    <div class="test-response">
+                        <strong>Gemini Response:</strong>
+                        <div style="max-height: 150px; overflow-y: auto; background: #f8fafc; padding: 12px; border-radius: 8px; margin-top: 8px; font-size: 13px;">
+                            ${result.response}
+                        </div>
+                    </div>
+                    <div class="test-meta">
+                        <span>Ranking: ${result.ranking}</span>
+                        <span>Sentiment: ${result.sentiment}</span>
+                    </div>
+                </div>
+            `;
+        }
+    });
+    
+    html += `
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('resultsContent').innerHTML = html;
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('aiTestModal');
+    if (event.target == modal) {
+        closeAITestModal();
+    }
+}
+    </script>
+</body>
+</html>

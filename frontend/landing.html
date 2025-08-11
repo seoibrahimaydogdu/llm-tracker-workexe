@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workexe AI Görünürlük - Premium Analytics Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #0a0a0f;
+            --secondary-bg: #1a1a2e;
+            --accent-lavender: #b794f6;
+            --accent-sky: #87ceeb;
+            --accent-purple: #8b5cf6;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b3;
+            --glow-primary: rgba(183, 148, 246, 0.4);
+            --glow-secondary: rgba(135, 206, 235, 0.3);
+        }
+
+        .theme-light {
+            --primary-bg: #fafafa;
+            --secondary-bg: #ffffff;
+            --accent-lavender: #8b5cf6;
+            --accent-sky: #3b82f6;
+            --accent-purple: #6366f1;
+            --text-primary: #1a1a2e;
+            --text-secondary: #6b7280;
+            --glow-primary: rgba(139, 92, 246, 0.2);
+            --glow-secondary: rgba(59, 130, 246, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.03em;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gradient-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%, var(--glow-primary) 0%, transparent 60%),
+                        radial-gradient(circle at 80% 80%, var(--glow-secondary) 0%, transparent 60%),
+                        radial-gradient(circle at 40% 60%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-light .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+        }
+
+        .glow-border {
+            position: relative;
+            border-radius: 24px;
+            padding: 2px;
+            background: linear-gradient(135deg, var(--accent-lavender), var(--accent-sky));
+            box-shadow: 0 0 40px var(--glow-primary);
+        }
+
+        .glow-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            background: linear-gradient(135deg, transparent, rgba(255, 255, 255, 0.1));
+            pointer-events: none;
+        }
+
+        .ambient-glow {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--glow-primary) 0%, transparent 70%);
+            top: -50%;
+            left: -50%;
+            opacity: 0.3;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-elements {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-lavender), var(--accent-sky));
+            opacity: 0.1;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .floating-elements:nth-child(2) {
+            width: 150px;
+            height: 150px;
+            top: 20%;
+            right: 10%;
+            animation-delay: -2s;
+        }
+
+        .floating-elements:nth-child(3) {
+            width: 80px;
+            height: 80px;
+            bottom: 20%;
+            left: 15%;
+            animation-delay: -4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        .text-gradient {
+            background: linear-gradient(135deg, var(--accent-lavender), var(--accent-sky));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mockup-container {
+            position: relative;
+            transform: perspective(1000px) rotateY(-5deg) rotateX(10deg);
+            transition: transform 0.6s ease;
+        }
+
+        .mockup-container:hover {
+            transform: perspective(1000px) rotateY(-2deg) rotateX(5deg) scale(1.02);
+        }
+
+        .habit-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 12px 0;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .theme-light .habit-card {
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .habit-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 60px;
+            height: 60px;
+        }
+
+        .progress-ring svg {
+            transform: rotate(-90deg);
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 4;
+            r: 26;
+            cx: 30;
+            cy: 30;
+        }
+
+        .progress-bg {
+            stroke: rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-light .progress-bg {
+            stroke: rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-fill {
+            stroke: var(--accent-lavender);
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px var(--glow-primary));
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            z-index: 100;
+            background: var(--glass-effect);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(20px);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        .fade-in-up:nth-child(2) { animation-delay: 0.2s; }
+        .fade-in-up:nth-child(3) { animation-delay: 0.4s; }
+        .fade-in-up:nth-child(4) { animation-delay: 0.6s; }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .premium-button {
+            background: linear-gradient(135deg, var(--accent-lavender), var(--accent-sky));
+            border: none;
+            border-radius: 16px;
+            padding: 16px 32px;
+            color: white;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px var(--glow-primary);
+        }
+
+        .premium-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px var(--glow-primary);
+        }
+
+        .premium-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .premium-button:hover::before {
+            left: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function ProgressRing({ percentage, size = 60 }) {
+            const circumference = 2 * Math.PI * 26;
+            const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+            return (
+                <div className="progress-ring" style={{ width: size, height: size }}>
+                    <svg width={size} height={size}>
+                        <circle className="progress-bg" />
+                        <circle 
+                            className="progress-fill" 
+                            strokeDasharray={circumference}
+                            strokeDashoffset={strokeDashoffset}
+                            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                        />
+                    </svg>
+                </div>
+            );
+        }
+
+        function HabitCard({ title, streak, completed, total }) {
+            return (
+                <div className="habit-card">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                            <ProgressRing percentage={(completed / total) * 100} />
+                            <div>
+                                <h4 style={{ color: 'var(--text-primary)' }} className="font-semibold">{title}</h4>
+                                <p style={{ color: 'var(--text-secondary)' }} className="text-sm">{completed}/{total} tamamlandı</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-gradient font-bold text-lg">{streak}</div>
+                            <p style={{ color: 'var(--text-secondary)' }} className="text-xs">günlük seri</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MockupInterface() {
+            const habits = [
+                { title: "AI Analiz Takibi", streak: 47, completed: 6, total: 8 },
+                { title: "Brand Monitoring", streak: 23, completed: 4, total: 6 },
+                { title: "Competitive Analysis", streak: 15, completed: 3, total: 5 },
+                { title: "Performance Review", streak: 31, completed: 5, total: 7 }
+            ];
+
+            return (
+                <div className="mockup-container">
+                    <div className="glow-border">
+                        <div className="glass-effect rounded-3xl p-8 relative overflow-hidden" style={{ width: '380px' }}>
+                            <div className="ambient-glow"></div>
+                            
+                            {/* Header */}
+                            <div className="mb-8">
+                                <h3 style={{ color: 'var(--text-primary)' }} className="text-xl font-bold mb-2">AI Görünürlük Dashboard</h3>
+                                <p style={{ color: 'var(--text-secondary)' }} className="text-sm">Bugün 4 görev tamamlandı</p>
+                            </div>
+
+                            {/* Weekly Progress */}
+                            <div className="mb-8">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 style={{ color: 'var(--text-primary)' }} className="font-semibold">Haftalık İlerleme</h4>
+                                    <span className="text-gradient font-bold">87%</span>
+                                </div>
+                                <div className="flex space-x-2">
+                                    {[92, 76, 88, 95, 73, 87, 90].map((progress, index) => (
+                                        <div key={index} className="flex-1">
+                                            <div style={{ background: 'rgba(255, 255, 255, 0.1)' }} className="h-24 rounded-lg relative overflow-hidden">
+                                                <div 
+                                                    className="absolute bottom-0 left-0 right-0 rounded-lg transition-all duration-500"
+                                                    style={{ 
+                                                        height: `${progress}%`,
+                                                        background: `linear-gradient(135deg, var(--accent-lavender), var(--accent-sky))`,
+                                                        boxShadow: `0 0 20px var(--glow-primary)`
+                                                    }}
+                                                ></div>
+                                            </div>
+                                            <p style={{ color: 'var(--text-secondary)' }} className="text-xs mt-2 text-center">
+                                                {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'][index]}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Habit List */}
+                            <div>
+                                <h4 style={{ color: 'var(--text-primary)' }} className="font-semibold mb-4">Günlük Analizler</h4>
+                                {habits.map((habit, index) => (
+                                    <HabitCard key={index} {...habit} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function LandingPage() {
+            const [isDark, setIsDark] = useState(true);
+
+            useEffect(() => {
+                document.body.className = isDark ? '' : 'theme-light';
+            }, [isDark]);
+
+            const toggleTheme = () => {
+                setIsDark(!isDark);
+            };
+
+            const navigateToDashboard = () => {
+                window.location.href = 'frontend/index.html';
+            };
+
+            return (
+                <div className="gradient-bg min-h-screen relative">
+                    {/* Floating Elements */}
+                    <div className="floating-elements"></div>
+                    <div className="floating-elements"></div>
+                    <div className="floating-elements"></div>
+
+                    {/* Theme Toggle */}
+                    <button className="theme-toggle" onClick={toggleTheme}>
+                        <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'} text-xl`} style={{ color: 'var(--accent-lavender)' }}></i>
+                    </button>
+
+                    {/* Main Content */}
+                    <div className="max-w-7xl mx-auto px-6 py-20">
+                        <div className="grid lg:grid-cols-2 gap-16 items-center min-h-screen">
+                            {/* Left Content */}
+                            <div className="space-y-12">
+                                <div className="fade-in-up">
+                                    <div className="inline-flex items-center space-x-2 px-4 py-2 glass-effect rounded-full mb-8">
+                                        <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-400 to-green-500"></div>
+                                        <span style={{ color: 'var(--text-secondary)' }} className="text-sm font-medium">AI-Powered Analytics</span>
+                                    </div>
+                                    
+                                    <h1 style={{ color: 'var(--text-primary)' }} className="text-6xl lg:text-7xl font-bold leading-tight mb-8">
+                                        AI Görünürlük
+                                        <br />
+                                        <span className="text-gradient">Takip Sistemi</span>
+                                    </h1>
+                                    
+                                    <p style={{ color: 'var(--text-secondary)' }} className="text-xl leading-relaxed mb-12 max-w-2xl">
+                                        Markanızın yapay zeka modellerindeki görünürlüğünü takip edin. 
+                                        Gerçek zamanlı analitik, rekabet izleme ve detaylı raporlama ile 
+                                        dijital varlığınızı optimize edin.
+                                    </p>
+                                </div>
+
+                                <div className="fade-in-up">
+                                    <div className="flex flex-wrap gap-4 mb-12">
+                                        <button className="premium-button" onClick={navigateToDashboard}>
+                                            <i className="fas fa-rocket mr-2"></i>
+                                            Dashboard'a Git
+                                        </button>
+                                        <button className="px-8 py-4 glass-effect rounded-2xl font-semibold transition-all duration-300 hover:scale-105" style={{ color: 'var(--text-primary)' }}>
+                                            <i className="fas fa-play mr-2"></i>
+                                            Demo İzle
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="fade-in-up">
+                                    <div className="grid grid-cols-3 gap-8">
+                                        <div className="text-center">
+                                            <div className="text-gradient text-3xl font-bold mb-2">500+</div>
+                                            <p style={{ color: 'var(--text-secondary)' }} className="text-sm">AI Model Takibi</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-gradient text-3xl font-bold mb-2">24/7</div>
+                                            <p style={{ color: 'var(--text-secondary)' }} className="text-sm">Gerçek Zamanlı İzleme</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-gradient text-3xl font-bold mb-2">99.9%</div>
+                                            <p style={{ color: 'var(--text-secondary)' }} className="text-sm">Güvenilirlik</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Mockup */}
+                            <div className="fade-in-up flex justify-center lg:justify-end">
+                                <MockupInterface />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Features */}
+                    <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
+                        <div className="flex space-x-8 items-center">
+                            <div className="flex items-center space-x-2" style={{ color: 'var(--text-secondary)' }}>
+                                <i className="fas fa-shield-alt"></i>
+                                <span className="text-sm">Enterprise Security</span>
+                            </div>
+                            <div className="flex items-center space-x-2" style={{ color: 'var(--text-secondary)' }}>
+                                <i className="fas fa-bolt"></i>
+                                <span className="text-sm">Lightning Fast</span>
+                            </div>
+                            <div className="flex items-center space-x-2" style={{ color: 'var(--text-secondary)' }}>
+                                <i className="fas fa-chart-line"></i>
+                                <span className="text-sm">Advanced Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<LandingPage />, document.getElementById('root'));
+    </script>
+</body>
+</html>
