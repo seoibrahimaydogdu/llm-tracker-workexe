@@ -2,6 +2,8 @@ import google.generativeai as genai
 import os
 import asyncio
 from datetime import datetime
+from rapidfuzz import fuzz
+import difflib
 
 class SimpleAITester:
     def __init__(self):
@@ -68,14 +70,44 @@ class SimpleAITester:
                 visibility_score = self.calculate_visibility_score(response_text, website)
                 ranking_info = self.extract_ranking(response_text, website)
                 sentiment = self.analyze_sentiment(response_text, website)
-                
+
+                # Mentioned flag: fuzzy ve difflib ile
+                try:
+                    response_lower = response_text.lower()
+                    domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
+                    company_name = domain.split('.')[0].lower()
+                    short_name = company_name.replace('hotel', '').replace('oteller', '').replace('otel', '').strip()
+                    otel_variants = [
+                        f"{short_name} sorgun",
+                        f"{short_name} belek",
+                        f"{short_name} lara",
+                        f"{short_name} bodrum",
+                        f"{short_name} torba",
+                        f"{short_name} + otel",
+                        f"{short_name} hotel"
+                    ]
+                    all_names = [company_name, short_name] + otel_variants
+                    words = response_lower.split()
+                    mentioned = (
+                        website.lower() in response_lower or
+                        domain.lower() in response_lower or
+                        company_name in response_lower or
+                        (short_name and short_name in response_lower) or
+                        any(variant in response_lower for variant in otel_variants) or
+                        any(fuzz.partial_ratio(name, response_lower) > 80 for name in all_names if name.strip()) or
+                        any(difflib.get_close_matches(name, words, n=1, cutoff=0.85) for name in all_names if name.strip())
+                    )
+                except Exception as e:
+                    print(f"❌ Mentioned algoritmasında hata: {e}")
+                    mentioned = False
+
                 results.append({
                     'prompt': prompt,
                     'response': response_text,
                     'visibility_score': visibility_score,
                     'ranking': ranking_info,
                     'sentiment': sentiment,
-                    'mentioned': visibility_score > 0,
+                    'mentioned': mentioned,
                     'timestamp': datetime.now().isoformat()
                 })
                 
@@ -105,35 +137,61 @@ class SimpleAITester:
         }
     
     def calculate_visibility_score(self, response: str, website: str) -> int:
-        """Response'ta website bahsedilme skorunu hesapla"""
         response_lower = response.lower()
-        
-        # Domain extraction
         domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
         company_name = domain.split('.')[0].lower()
-        
+        short_name = company_name.replace('hotel', '').replace('oteller', '').replace('otel', '').strip()
+
         score = 0
-        
-        # Direct mentions
+
+        # 1. Tam domain
         if website.lower() in response_lower:
             score += 50
-            print(f"      🎯 Direct website mention found!")
-        
+        # 2. Domain adı
         if domain.lower() in response_lower:
             score += 35
-            print(f"      🌐 Domain mention found!")
-        
+        # 3. Şirket adı
         if company_name in response_lower:
             score += 25
-            print(f"      🏢 Company name mention found!")
-        
-        # Context scoring
-        positive_context = ['önerir', 'tavsiye', 'en iyi', 'kaliteli', 'güvenilir', 'profesyonel']
-        if any(ctx in response_lower for ctx in positive_context):
-            if company_name in response_lower:
-                score += 20
-                print(f"      ⭐ Positive context found!")
-        
+        # 4. Kısa marka adı
+        if short_name and short_name in response_lower:
+            score += 20
+
+        # 5. Otel varyasyonları
+        otel_variants = [
+            f"{short_name} sorgun",
+            f"{short_name} belek",
+            f"{short_name} lara",
+            f"{short_name} bodrum",
+            f"{short_name} torba",
+            f"{short_name} + otel",
+            f"{short_name} hotel"
+        ]
+        for variant in otel_variants:
+            if variant in response_lower:
+                score += 15
+                break
+
+        # 6. Fuzzy matching (rapidfuzz)
+        all_names = [company_name, short_name] + otel_variants
+        for name in all_names:
+            if not name.strip():
+                continue
+            fuzz_ratio = fuzz.partial_ratio(name, response_lower)
+            if fuzz_ratio > 80:
+                score += 15
+                break
+
+        # 7. difflib ile yakın eşleşme
+        words = response_lower.split()
+        for name in all_names:
+            if not name.strip():
+                continue
+            matches = difflib.get_close_matches(name, words, n=1, cutoff=0.85)
+            if matches:
+                score += 10
+                break
+
         return max(0, min(score, 100))
     
     def extract_ranking(self, response: str, website: str) -> str:
@@ -142,14 +200,25 @@ class SimpleAITester:
         domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
         company_name = domain.split('.')[0].lower()
         
-        if company_name in response_lower:
+        # Special handling for Turkish companies
+        company_variations = [company_name]
+        if company_name == "kahvedunyasi":
+            company_variations.extend(["kahve dünyası", "kahve dünyasi", "kahvedünyası", "kahvedünyasi"])
+        elif company_name == "workexe":
+            company_variations.extend(["work exe", "workex"])
+        elif company_name == "ahrefs":
+            company_variations.extend(["ah refs", "ahref"])
+        
+        company_found = any(variation in response_lower for variation in company_variations)
+        
+        if company_found:
             if any(word in response_lower for word in ['birinci', 'first', '1.', 'en iyi']):
                 return "1st"
             elif any(word in response_lower for word in ['ikinci', 'second', '2.']):
                 return "2nd"
             elif any(word in response_lower for word in ['üçüncü', 'third', '3.']):
                 return "3rd"
-            elif any(word in response_lower for word in ['önde gelen', 'lider', 'top']):
+            elif any(word in response_lower for word in ['önde gelen', 'lider', 'top', 'büyük']):
                 return "Top 10"
             else:
                 return "Mentioned"
@@ -162,10 +231,21 @@ class SimpleAITester:
         domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
         company_name = domain.split('.')[0].lower()
         
-        if company_name not in response_lower:
+        # Special handling for Turkish companies
+        company_variations = [company_name]
+        if company_name == "kahvedunyasi":
+            company_variations.extend(["kahve dünyası", "kahve dünyasi", "kahvedünyası", "kahvedünyasi"])
+        elif company_name == "workexe":
+            company_variations.extend(["work exe", "workex"])
+        elif company_name == "ahrefs":
+            company_variations.extend(["ah refs", "ahref"])
+        
+        company_found = any(variation in response_lower for variation in company_variations)
+        
+        if not company_found:
             return "neutral"
         
-        positive_words = ['mükemmel', 'harika', 'en iyi', 'önerir', 'güvenilir', 'profesyonel', 'kaliteli', 'başarılı']
+        positive_words = ['mükemmel', 'harika', 'en iyi', 'önerir', 'güvenilir', 'profesyonel', 'kaliteli', 'başarılı', 'popüler', 'büyük', 'geniş']
         negative_words = ['kötü', 'berbat', 'tavsiye etmem', 'sorunlu', 'yetersiz', 'güvenilmez']
         
         positive_count = sum(1 for word in positive_words if word in response_lower)

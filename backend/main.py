@@ -148,6 +148,20 @@ def init_sqlite():
             )
         ''')
         
+        # Visibility tests tablosu
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS visibility_tests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                website TEXT NOT NULL,
+                prompts TEXT,
+                results_summary TEXT,
+                visibility_score INTEGER DEFAULT 0,
+                mentioned_count INTEGER DEFAULT 0,
+                total_tests INTEGER DEFAULT 0,
+                test_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # analysis_count kolonu kontrolü ve eklenmesi
         cursor.execute("PRAGMA table_info(urls)")
         columns = [column[1] for column in cursor.fetchall()]
@@ -166,10 +180,10 @@ def init_sqlite():
         raise e
 
 # Supabase veya SQLite bağlantısını başlat
-supabase = None
+supabase_client = None
 if USE_SUPABASE and SUPABASE_AVAILABLE and SUPABASE_URL and SUPABASE_KEY:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("✅ Supabase bağlantısı kuruldu")
     except Exception as e:
         print(f"❌ Supabase bağlantı hatası: {e}")
@@ -184,7 +198,7 @@ if not USE_SUPABASE:
 def get_db_connection():
     """SQLite veritabanı bağlantısı al"""
     if USE_SUPABASE:
-        return supabase
+        return supabase_client
     else:
         conn = sqlite3.connect('ai_visibility.db')
         conn.row_factory = sqlite3.Row
@@ -1612,6 +1626,8 @@ async def run_real_visibility_test(request_data: dict):
         website = request_data.get('website', '').strip()
         custom_prompts = request_data.get('prompts', [])
         
+        print(f"🔍 Gelen veriler: website={website}, custom_prompts={custom_prompts}")
+        
         if not website:
             raise HTTPException(status_code=400, detail="Website URL gereklidir")
         
@@ -1619,6 +1635,63 @@ async def run_real_visibility_test(request_data: dict):
         tester = SimpleAITester()
         
         results = await tester.test_website_visibility(website, custom_prompts)
+        
+        # Test sonuçlarını veritabanına kaydet
+        try:
+            # Tüm kullanılan promptları topla (custom + AI generated)
+            all_prompts = []
+            if custom_prompts:
+                all_prompts.extend(custom_prompts)
+                print(f"📝 Custom promptlar eklendi: {custom_prompts}")
+            
+            # AI tarafından oluşturulan promptları da ekle
+            if results.get('test_results'):
+                for test_result in results['test_results']:
+                    if 'prompt' in test_result and test_result['prompt'] not in all_prompts:
+                        all_prompts.append(test_result['prompt'])
+                        print(f"🤖 AI prompt eklendi: {test_result['prompt'][:50]}...")
+            
+            print(f"💾 Kaydedilecek tüm promptlar: {all_prompts}")
+            
+            # llm_visibility_daily tablosuna uygun veri yapısı
+            test_data = {
+                "brand": website,  # website -> brand olarak kaydet
+                "date": datetime.now().date().isoformat(),  # sadece tarih
+                "visibility_score": float(results.get('summary', {}).get('average_visibility_score', 0)),
+                "average_rank": float(results.get('summary', {}).get('average_rank', 0)),
+                "sentiment_score": float(results.get('summary', {}).get('sentiment_score', 0)),
+                "total_mentions": int(results.get('summary', {}).get('mentioned_count', 0)),
+                "prompts_used": json.dumps(all_prompts),  # Tüm promptları kaydet
+                "created_at": datetime.now().isoformat()
+            }
+            
+            if USE_SUPABASE and supabase_client:
+                # Supabase'e llm_visibility_daily tablosuna kaydet
+                response = supabase_client.table('llm_visibility_daily').insert(test_data).execute()
+                print(f"✅ Test sonuçları Supabase llm_visibility_daily tablosuna kaydedildi: {response}")
+            else:
+                # SQLite'a kaydet (fallback)
+                conn = sqlite3.connect('ai_visibility.db')
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO visibility_tests (website, prompts, results_summary, visibility_score, mentioned_count, total_tests, test_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    website,
+                    json.dumps(custom_prompts) if custom_prompts else "",
+                    json.dumps(results.get('summary', {})),
+                    results.get('summary', {}).get('average_visibility_score', 0),
+                    results.get('summary', {}).get('mentioned_count', 0),
+                    results.get('summary', {}).get('successful_tests', 0),
+                    datetime.now().isoformat()
+                ))
+                conn.commit()
+                conn.close()
+                print(f"✅ Test sonuçları SQLite'a kaydedildi")
+                
+        except Exception as db_error:
+            print(f"⚠️ Veritabanı kayıt hatası: {db_error}")
+            # Veritabanı hatası olsa bile test sonuçlarını döndür
         
         return {
             "status": "success",
@@ -1659,3 +1732,160 @@ async def run_quick_ai_test(request_data: dict):
         error_msg = f"Hızlı test hatası: {str(e)}"
         print(f"❌ {error_msg}")
         raise HTTPException(status_code=500, detail=error_msg)
+
+
+@app.get("/get-test-history")
+async def get_test_history():
+    """Kaydedilen test geçmişini getir"""
+    try:
+        if USE_SUPABASE and supabase_client:
+            # Supabase'ten llm_visibility_daily tablosundan getir
+            response = supabase_client.table('llm_visibility_daily').select('*').order('created_at', desc=True).limit(10).execute()
+            tests = response.data if response.data else []
+            
+            # Veri yapısını eski format ile uyumlu hale getir
+            formatted_tests = []
+            for test in tests:
+                # Prompt bilgilerini al
+                              # Prompt bilgilerini al
+                prompts_used = test.get('prompts_used', '[]')
+                print(f"🔍 Test {test.get('brand', '')} için prompts_used: {prompts_used}")
+                try:
+                    prompts = json.loads(prompts_used) if prompts_used else []
+                    print(f"✅ Parsed prompts: {prompts}")
+                except Exception as parse_error:
+                    prompts = []
+                    print(f"❌ Prompt parse hatası: {parse_error}")
+                
+                formatted_tests.append({
+                    'website': test.get('brand', ''),
+                    'prompts': prompts,  # Prompt bilgilerini ekle
+                    'results_summary': json.dumps({
+                        'visibility_score': test.get('visibility_score', 0),
+                        'average_rank': test.get('average_rank', 0),
+                        'sentiment_score': test.get('sentiment_score', 0),
+                        'mentioned_count': test.get('total_mentions', 0)
+                    }),
+                    'visibility_score': test.get('visibility_score', 0),
+                    'mentioned_count': test.get('total_mentions', 0),
+                    'total_tests': 1,  # Her kayıt bir test
+                    'test_date': test.get('created_at', '')
+                })
+            tests = formatted_tests
+        else:
+            # SQLite'tan getir
+            conn = sqlite3.connect('ai_visibility.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT website, prompts, results_summary, visibility_score, mentioned_count, total_tests, test_date
+                FROM visibility_tests 
+                ORDER BY test_date DESC 
+                LIMIT 10
+            ''')
+            rows = cursor.fetchall()
+            conn.close()
+            
+            tests = []
+            for row in rows:
+                tests.append({
+                    'website': row[0],
+                    'prompts': row[1],
+                    'results_summary': row[2],
+                    'visibility_score': row[3],
+                    'mentioned_count': row[4],
+                    'total_tests': row[5],
+                    'test_date': row[6]
+                })
+        
+        print(f"📊 {len(tests)} test geçmişi getirildi")
+        
+        return {
+            "status": "success",
+            "message": f"{len(tests)} test bulundu",
+            "data": tests
+        }
+        
+    except Exception as e:
+        error_msg = f"Test geçmişi getirme hatası: {str(e)}"
+        print(f"❌ {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+@app.get("/get-test-history/{website}")
+async def get_website_test_history(website: str):
+    """Belirli bir website için test geçmişini getir"""
+    try:
+        if USE_SUPABASE and supabase_client:
+            # Supabase'ten llm_visibility_daily tablosundan getir
+            response = supabase_client.table('llm_visibility_daily').select('*').eq('brand', website).order('created_at', desc=True).execute()
+            tests = response.data if response.data else []
+            
+            # Veri yapısını eski format ile uyumlu hale getir
+            formatted_tests = []
+            for test in tests:
+                # Prompt bilgilerini al
+                prompts_used = test.get('prompts_used', '[]')
+                try:
+                    prompts = json.loads(prompts_used) if prompts_used else []
+                except:
+                    prompts = []
+                
+                formatted_tests.append({
+                    'website': test.get('brand', ''),
+                    'prompts': prompts,  # Prompt bilgilerini ekle
+                    'results_summary': json.dumps({
+                        'visibility_score': test.get('visibility_score', 0),
+                        'average_rank': test.get('average_rank', 0),
+                        'sentiment_score': test.get('sentiment_score', 0),
+                        'mentioned_count': test.get('total_mentions', 0)
+                    }),
+                    'visibility_score': test.get('visibility_score', 0),
+                    'mentioned_count': test.get('total_mentions', 0),
+                    'total_tests': 1,  # Her kayıt bir test
+                    'test_date': test.get('created_at', '')
+                })
+            tests = formatted_tests
+        else:
+            # SQLite'tan getir
+            conn = sqlite3.connect('ai_visibility.db')
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT website, prompts, results_summary, visibility_score, mentioned_count, total_tests, test_date
+                FROM visibility_tests 
+                WHERE website = ?
+                ORDER BY test_date DESC
+            ''', (website,))
+            rows = cursor.fetchall()
+            conn.close()
+            
+            tests = []
+            for row in rows:
+                tests.append({
+                    'website': row[0],
+                    'prompts': row[1],
+                    'results_summary': row[2],
+                    'visibility_score': row[3],
+                    'mentioned_count': row[4],
+                    'total_tests': row[5],
+                    'test_date': row[6]
+                })
+        
+        print(f"📊 {website} için {len(tests)} test geçmişi getirildi")
+        
+        return {
+            "status": "success",
+            "message": f"{website} için {len(tests)} test bulundu",
+            "data": tests
+        }
+        
+    except Exception as e:
+        error_msg = f"Website test geçmişi getirme hatası: {str(e)}"
+        print(f"❌ {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)
+
+
+# Uvicorn başlatma kodu
+if __name__ == "__main__":
+    import uvicorn
+    print("🚀 FastAPI sunucusu başlatılıyor...")
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

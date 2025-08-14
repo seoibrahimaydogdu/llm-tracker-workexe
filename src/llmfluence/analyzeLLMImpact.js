@@ -1,9 +1,6 @@
-import { Configuration, OpenAIApi } from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const config = new Configuration({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-});
-const openai = new OpenAIApi(config);
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export async function analyzeLLMImpact(brand) {
   const prompt = `
@@ -15,14 +12,25 @@ Lütfen aşağıdaki gibi kısa JSON yanıtı ver:
   "brand": "${brand}",
   "mentioned": true | false,
   "score": 0-100,
-  "summary": "GPT’de ne şekilde geçtiği"
+  "summary": "GPT'de ne şekilde geçtiği"
 }`;
 
-  const res = await openai.createChatCompletion({
-    model: "gpt-4o",
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const output = res.data.choices[0].message.content;
-  return JSON.parse(output); // ⚠️ Try/catch ile sarmala istersen
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // JSON yanıtını parse et
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Gemini API hatası:", error);
+    return {
+      brand: brand,
+      mentioned: false,
+      score: 0,
+      summary: "API hatası nedeniyle analiz yapılamadı"
+    };
+  }
 }
